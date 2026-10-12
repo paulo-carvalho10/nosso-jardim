@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uma cartinha pra você</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --noite: #1e1b2e;
+    --janela: #2a2640;
+    --rosa-claro: #fde8ea;
+    --rosa: #f4c9cf;
+    --rosa-forte: #eaa6b0;
+    --vinho: #b23a56;
+    --papel: #fffaf2;
+    --tinta: #4a3540;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--noite);
+    color: #e6e1f5;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    transition: background 1s;
+    overflow-x: hidden;
+  }
+  body[data-tela="tela-envelope"],
+  body[data-tela="tela-carta"] { background: var(--rosa-claro); }
+
+  .tela { display: none; }
+  .tela.ativa {
+    display: grid;
+    place-items: center;
+    min-height: 100dvh;
+    padding: 24px 16px;
+    animation: surgir .7s ease both;
+  }
+  @keyframes surgir {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* ---------- Tela 1: o editor ---------- */
+  .janela {
+    width: min(460px, 100%);
+    background: var(--janela);
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .45);
+    overflow: hidden;
+  }
+  .barra {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 11px 14px;
+    background: rgba(0, 0, 0, .22);
+    font-size: 12px;
+    color: #a59fc0;
+  }
+  .barra i { width: 11px; height: 11px; border-radius: 50%; background: #ff6b81; }
+  .barra i:nth-child(2) { background: #ffd166; }
+  .barra i:nth-child(3) { background: #7bd88f; margin-right: 8px; }
+
+  .codigo { padding: 18px 16px 6px; font-size: 14px; line-height: 1.75; }
+  .linha { white-space: pre-wrap; min-height: 1.75em; }
+  .com { color: #7d7799; font-style: italic; }
+  .key { color: #ff8fab; }
+  .str { color: #a8e6a1; }
+  .fun { color: #9ecbff; }
+
+  .saida {
+    margin: 10px 16px 0;
+    padding: 12px 14px;
+    background: rgba(0, 0, 0, .3);
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #c9c3e0;
+  }
+  .saida div:last-child { color: #ffb3c1; }
+
+  .executar {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 16px;
+    padding: 13px;
+    border: 0;
+    border-radius: 9px;
+    background: #ff6b81;
+    color: #fff;
+    font: 600 15px "JetBrains Mono", Consolas, monospace;
+    cursor: pointer;
+    transition: transform .15s, opacity .3s;
+  }
+  .executar:hover { transform: translateY(-1px); }
+  .executar:disabled { opacity: .45; cursor: default; transform: none; }
+
+  /* ---------- Tela 2: o envelope ---------- */
+  .palco { text-align: center; color: var(--vinho); }
+  .palco p { margin: 34px 0 0; font-size: 14px; }
+
+  .envelope {
+    position: relative;
+    display: block;
+    width: min(320px, 84vw);
+    aspect-ratio: 3 / 2;
+    margin: 90px auto 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    perspective: 900px;
+    filter: drop-shadow(0 14px 22px rgba(178, 58, 86, .28));
+  }
+  .envelope span { position: absolute; display: block; }
+  .env-fundo  { inset: 0; background: #dd97a3; border-radius: 8px; }
+  .env-papel  {
+    inset: 8% 6%;
+    background: var(--papel);
+    border-radius: 4px;
+    z-index: 1;
+    transition: transform .9s .55s ease;
+  }
+  .env-frente {
+    inset: 0;
+    background: var(--rosa);
+    border-radius: 8px;
+    clip-path: polygon(0 0, 50% 55%, 100% 0, 100% 100%, 0 100%);
+    z-index: 2;
+  }
+  .env-aba {
+    inset: 0 0 auto 0;
+    height: 55%;
+    background: var(--rosa-forte);
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    transform-origin: top;
+    z-index: 3;
+    transition: transform .6s ease, z-index 0s .3s;
+  }
+  .selo {
+    left: 50%;
+    top: 55%;
+    z-index: 4;
+    font-size: 40px;
+    line-height: 1;
+    color: var(--vinho);
+    transform: translate(-50%, -50%);
+    animation: pulsar 1.3s ease-in-out infinite;
+    transition: opacity .3s;
+  }
+  @keyframes pulsar {
+    50% { transform: translate(-50%, -50%) scale(1.18); }
+  }
+  .envelope.aberto { cursor: default; }
+  .envelope.aberto .env-aba   { transform: rotateX(180deg); z-index: 0; }
+  .envelope.aberto .env-papel { transform: translateY(-58%); }
+  .envelope.aberto .selo      { opacity: 0; }
+
+  /* ---------- Tela 3: a carta ---------- */
+  .papel {
+    width: min(34rem, 100%);
+    padding: 34px 28px 30px;
+    background: var(--papel);
+    border-radius: 6px;
+    box-shadow: 0 16px 40px rgba(178, 58, 86, .22);
+    color: var(--tinta);
+    font-family: "Caveat", "Segoe Script", cursive;
+    font-size: 1.5rem;
+    line-height: 2.1rem;
+  }
+  #papel-texto {
+    background: repeating-linear-gradient(transparent 0 2.1rem, rgba(178, 58, 86, .13) 2.1rem calc(2.1rem + 1px));
+  }
+  .papel p { margin: 0 0 2.1rem; min-height: 2.1rem; }
+  .papel .saudacao   { font-weight: 600; font-size: 1.75rem; color: var(--vinho); }
+  .papel .despedida  { margin-bottom: 0; text-align: right; font-weight: 600; font-size: 1.75rem; color: var(--vinho); }
+  .papel .assinatura { text-align: right; font-weight: 600; font-size: 1.9rem; color: var(--vinho); }
+
+  .polaroid {
+    position: relative;
+    width: min(250px, 80%);
+    margin: 8px auto 2.4rem;
+    padding: 10px 10px 4px;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(74, 53, 64, .28);
+    transform: rotate(-2.5deg);
+  }
+  .polaroid::before {
+    content: "";
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    width: 92px;
+    height: 24px;
+    background: rgba(234, 166, 176, .65);
+    transform: translateX(-50%) rotate(3deg);
+  }
+  .polaroid img { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; }
+  .polaroid figcaption { text-align: center; font-size: 1.35rem; }
+  .polaroid.final { margin-bottom: 8px; transform: rotate(2deg); animation: revelar .9s ease both; }
+  @keyframes revelar {
+    from { opacity: 0; transform: rotate(-6deg) scale(.8); }
+    to   { opacity: 1; transform: rotate(2deg) scale(1); }
+  }
+
+  .dica {
+    margin: 0;
+    font: 12px "JetBrains Mono", Consolas, monospace;
+    color: rgba(178, 58, 86, .6);
+    text-align: center;
+  }
+  .ps-botao {
+    display: block;
+    margin: 0 auto;
+    padding: 10px 20px;
+    border: 1.5px dashed var(--vinho);
+    border-radius: 999px;
+    background: none;
+    color: var(--vinho);
+    font: 600 1.3rem "Caveat", cursive;
+    cursor: pointer;
+  }
+
+  .coracao {
+    position: fixed;
+    bottom: -40px;
+    color: var(--vinho);
+    pointer-events: none;
+    animation: subir linear forwards;
+  }
+  @keyframes subir {
+    to { transform: translateY(-115vh) rotate(25deg); opacity: 0; }
+  }
+
+  [hidden] { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body data-tela="tela-editor">
+
+<section id="tela-editor" class="tela ativa">
+  <div class="janela">
+    <div class="barra"><i></i><i></i><i></i>jardim.js</div>
+    <div id="codigo" class="codigo"></div>
+    <div id="saida" class="saida" hidden></div>
+    <button id="executar" class="executar" type="button">▶ Executar</button>
+  </div>
+</section>
+
+<section id="tela-envelope" class="tela">
+  <div class="palco">
+    <button id="envelope" class="envelope" type="button" aria-label="Abrir a carta">
+      <span class="env-fundo"></span>
+      <span class="env-papel"></span>
+      <span class="env-frente"></span>
+      <span class="env-aba"></span>
+      <span class="selo">♥</span>
+    </button>
+    <p>toque no coração para abrir</p>
+  </div>
+</section>
+
+<section id="tela-carta" class="tela">
+  <article id="papel" class="papel">
+    <figure class="polaroid">
+      <img id="foto-topo" alt="Nós dois">
+      <figcaption id="legenda-topo"></figcaption>
+    </figure>
+    <div id="papel-texto"></div>
+    <p id="dica" class="dica">toque na carta para ler tudo de uma vez</p>
+    <button id="ps-botao" class="ps-botao" type="button" hidden>tem mais uma coisa ♥</button>
+  </article>
+</section>
+
+<script>
+  // ============================================================
+  // EDITE AQUI: tudo o que aparece na carta sai deste bloco.
+  // ============================================================
+  const CARTA = {
+    para: "minha princesa",
+    de: "Pepe",
+    saudacao: "Meu amor,",
+    paragrafos: [
+      "Como a gente sempre brinca que com o tempo vai parando de regar o jardim, vim regar o meu, para que nunca falte amor e carinho no nosso relacionamento.",
+      "Você é a pessoa mais incrível e perfeita que eu poderia ter em minha vida. Sempre que penso em um futuro com você, tendo nossa casa, filhos, carro, viagens e tudo mais que a vida proporcionar, meu coração enche de alegria. Que felicidade é ter alguém que cause esse sentimento em mim.",
+      "Eu te amo incondicionalmente e vou estar sempre buscando ser a melhor pessoa pra você, depois para ser a melhor pessoa para nossa família.",
+      "Quando fui embora achei você meio para baixo, você falou que era só cansaço, mas te conhecendo sei que não era só isso. Me desculpa, queria desejar que você aproveite muito a viagem, e aproveite cada segundo. Vou estar aqui ansioso para quando você voltar.",
+    ],
+    despedida: "Eu te amo muito, minha princesa!!",
+    fotoTopo:  { arquivo: "fotos/nos-dois.jpg", legenda: "eu e você ♥" },
+    fotoFinal: { arquivo: "fotos/beijo.jpg",    legenda: "te espero aqui ♥" },
+  };
+
+  const CODIGO = [
+    [["com", "// jardim.js"]],
+    [["key", "const "], ["", "de   = "], ["str", `"${CARTA.de}"`], ["", ";"]],
+    [["key", "const "], ["", "para = "], ["str", `"${CARTA.para}"`], ["", ";"]],
+    [],
+    [["key", "while "], ["", "("], ["key", "true"], ["", ") {"]],
+    [["", "  jardim."], ["fun", "regar"], ["", "(amor, carinho);"]],
+    [["", "}"]],
+  ];
+
+  const SAIDA = [
+    "$ node jardim.js",
+    "regando o jardim... ok",
+    "amor e carinho: nunca em falta",
+    `1 carta pronta para ${CARTA.para} ♥`,
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const semAnimacao = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const esperar = (ms) => new Promise((ok) => setTimeout(ok, semAnimacao ? 0 : ms));
+
+  $("foto-topo").src = CARTA.fotoTopo.arquivo;
+  $("legenda-topo").textContent = CARTA.fotoTopo.legenda;
+  new Image().src = CARTA.fotoFinal.arquivo;
+
+  function mostrar(id) {
+    document.querySelectorAll(".tela").forEach((t) => t.classList.toggle("ativa", t.id === id));
+    document.body.dataset.tela = id;
+    window.scrollTo(0, 0);
+  }
+
+  for (const pedacos of CODIGO) {
+    const linha = document.createElement("div");
+    linha.className = "linha";
+    for (const [classe, texto] of pedacos) {
+      const span = document.createElement("span");
+      if (classe) span.className = classe;
+      span.textContent = texto;
+      linha.append(span);
+    }
+    $("codigo").append(linha);
+  }
+
+  $("executar").addEventListener("click", async () => {
+    $("executar").disabled = true;
+    $("saida").hidden = false;
+    for (const texto of SAIDA) {
+      const linha = document.createElement("div");
+      linha.textContent = texto;
+      $("saida").append(linha);
+      await esperar(700);
+    }
+    await esperar(600);
+    mostrar("tela-envelope");
+  });
+
+  $("envelope").addEventListener("click", async () => {
+    if ($("envelope").classList.contains("aberto")) return;
+    $("envelope").classList.add("aberto");
+    await esperar(1900);
+    mostrar("tela-carta");
+    escreverCarta();
+  });
+
+  let pular = semAnimacao;
+  $("papel").addEventListener("click", () => { pular = true; });
+
+  async function digitar(el, texto) {
+    for (const letra of texto) {
+      if (pular) { el.textContent = texto; return; }
+      el.textContent += letra;
+      await esperar(/[.,!?:]/.test(letra) ? 240 : 34);
+    }
+  }
+
+  async function escreverCarta() {
+    const blocos = [
+      ["saudacao", CARTA.saudacao],
+      ...CARTA.paragrafos.map((texto) => ["", texto]),
+      ["despedida", CARTA.despedida],
+      ["assinatura", CARTA.de],
+    ];
+    for (const [classe, texto] of blocos) {
+      const p = document.createElement("p");
+      if (classe) p.className = classe;
+      $("papel-texto").append(p);
+      if (!pular) p.scrollIntoView({ behavior: "smooth", block: "center" });
+      await digitar(p, texto);
+      if (!pular) await esperar(380);
+    }
+    $("dica").hidden = true;
+    $("ps-botao").hidden = false;
+  }
+
+  $("ps-botao").addEventListener("click", () => {
+    const foto = document.createElement("figure");
+    foto.className = "polaroid final";
+    const img = document.createElement("img");
+    img.src = CARTA.fotoFinal.arquivo;
+    img.alt = "Nós dois";
+    const legenda = document.createElement("figcaption");
+    legenda.textContent = CARTA.fotoFinal.legenda;
+    foto.append(img, legenda);
+    $("ps-botao").replaceWith(foto);
+    foto.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!semAnimacao) chuvaDeCoracoes();
+  });
+
+  function chuvaDeCoracoes(quantidade = 30) {
+    for (let i = 0; i < quantidade; i++) {
+      const coracao = document.createElement("span");
+      coracao.className = "coracao";
+      coracao.textContent = i % 3 ? "♥" : "🌸";
+      coracao.style.left = Math.random() * 100 + "vw";
+      coracao.style.fontSize = 14 + Math.random() * 24 + "px";
+      coracao.style.animationDelay = Math.random() * 1.5 + "s";
+      coracao.style.animationDuration = 3 + Math.random() * 3 + "s";
+      coracao.addEventListener("animationend", () => coracao.remove());
+      document.body.append(coracao);
+    }
+  }
+</script>
+</body>
+</html>
